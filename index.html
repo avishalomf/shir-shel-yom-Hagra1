@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="./icon-192.png">
     <link rel="manifest" href="./manifest.json">
     
-    <title>v1.3.4 - שיר של יום</title>
+    <title>v1.3.5 - שיר של יום</title>
     <script src="https://cdn.jsdelivr.net/npm/@hebcal/core@latest/dist/bundle.min.js"></script>
     
     <style>
@@ -30,7 +30,7 @@
 <body>
 
 <div id="app-root">
-    <div class="version-header">Build: v1.3.4</div>
+    <div class="version-header">Build: v1.3.5</div>
     <div class="container">
         <div class="date-picker-section">
             <input type="date" id="date-input" onchange="pickDate(this.value)">
@@ -99,7 +99,7 @@
                 for (let d = 16; d <= day; d++) {
                     if (new hebcal.HDate(d, 7, hDate.getFullYear()).greg().getDay() !== 6) count++;
                 }
-                // סדר המזמורים לסוכות (לפי מנהג הגר"א - יום ג' הוא 94_B, יום ד' הוא 94_A)
+                // סדר המזמורים לסוכות לפי מנהג הגר"א (צ"ד מתחלק בג' ו-ד' דחוהמ"ס)
                 const s = ["29", "50", "94_B", "94_A", "81", "82"];
                 return { key: s[count-1], label: (day===21)?"הושענא רבא":numToHeb(count)+" דחוה\"מ סוכות" };
             }
@@ -124,7 +124,7 @@
                 let baseNum = info.key.split('_')[0];
                 let titleText = "מזמור " + numToHeb(baseNum);
                 
-                // לוגיקת כותרות מיוחדת לחלקים של צ"ד
+                // טיפול בכותרות של חלקי מזמור צ"ד
                 if (info.key === "94_A") titleText += ", א'-ט\"ו";
                 else if (info.key === "94_B" && info.label.includes("סוכות")) titleText += ", ט\"ז-כ\"ג";
 
