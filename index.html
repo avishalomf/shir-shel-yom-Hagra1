@@ -2,28 +2,26 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>v1.4.7 - שיר של יום</title>
+    <title>v1.4.8 - שיר של יום</title>
+    <script src="https://unpkg.com/hebcal@1.6.0/dist/hebcal.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; line-height: 1.6; }
-        #psalm-content { white-space: pre-wrap; font-size: 1.2em; max-width: 800px; margin: 0 auto; text-align: right; }
-        .version-tag { color: #ccc; font-size: 0.8em; }
+        body { font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        #psalm-content { white-space: pre-wrap; font-size: 1.3em; text-align: justify; line-height: 1.8; margin-top: 20px; }
+        .version { color: #aaa; font-size: 0.7em; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <header>
-        <div id="version-tag" class="version-tag">v1.4.7</div>
-        <h2 id="psalm-label">טוען...</h2>
-        <h1 id="psalm-title"></h1>
-    </header>
-    <main>
+    <div class="card">
+        <div id="psalm-label" style="color: #666; font-weight: bold;"></div>
+        <h1 id="psalm-title">טוען...</h1>
         <div id="psalm-content"></div>
-    </main>
-
-    <script src="https://unpkg.com/hebcal@1.6.0/dist/hebcal.min.js"></script>
+        <div id="version-tag" class="version">v1.4.8</div>
+    </div>
 
     <script>
-        // VERSION: 1.4.7
-        let globalPsalmsData = null;
+        // VERSION: 1.4.8
+        let psalmsData = null;
 
         function numToHeb(num) {
             const letters = {
@@ -35,15 +33,19 @@
             return letters[num] || num;
         }
 
-        function determinePsalmKey(date) {
-            const hDate = new Hebcal.HDate(date);
+        function getPsalmKey(date) {
+            // בדיקה אם הספריה נטענה
+            const HDateClass = (typeof Hebcal !== 'undefined') ? Hebcal.HDate : (typeof hebcal !== 'undefined' ? hebcal.HDate : null);
+            if (!HDateClass) return { key: "ERROR", label: "ספריית Hebcal לא נטענה" };
+
+            const hDate = new HDateClass(date);
             const day = hDate.getDate();
             const month = hDate.getMonth();
             const dayOfWeek = date.getDay();
 
             if (dayOfWeek === 6) return { key: "92", label: "שבת קודש" };
 
-            // סוכות
+            // לוגיקה סוכות (לפי הטבלה שלך)
             if (month === 7 && day >= 15 && day <= 21) {
                 if (day === 15) return { key: "76", label: "יום א' דסוכות" };
                 const mIndex = day - 15;
@@ -53,10 +55,10 @@
                 if (mIndex === 3) return { key: (dayOfWeek === 0) ? "50" : "94_B", label: lbl };
                 if (mIndex === 4) return { key: (dayOfWeek === 1) ? "94_B" : "94_A", label: lbl };
                 if (mIndex === 5) return { key: (dayOfWeek === 0 || dayOfWeek === 2) ? "94_A" : "81", label: lbl };
-                if (mIndex === 6) return { key: "82", label: lbl };
+                return { key: "82", label: lbl };
             }
 
-            // פסח
+            // לוגיקה פסח (לפי הטבלה שלך)
             if (month === 1 && day >= 15 && day <= 21) {
                 if (day === 15) return { key: "114", label: "יום א' דפסח" };
                 if (day === 21) return { key: "18", label: "שביעי של פסח" };
@@ -75,43 +77,45 @@
 
             if (day === 1 || day === 30) return { key: "104", label: "ראש חודש" };
             if (dayOfWeek === 3) return { key: "94", label: "" };
-            
-            const daily = {0:'24', 1:'48', 2:'82', 4:'81', 5:'93'};
-            return { key: daily[dayOfWeek] || "24", label: "" };
+            return { key: {0:'24', 1:'48', 2:'82', 4:'81', 5:'93'}[dayOfWeek] || "24", label: "" };
         }
 
-        async function init() {
+        async function load() {
             try {
-                const info = determinePsalmKey(new Date());
-                const response = await fetch('psalms.json');
-                globalPsalmsData = await response.json();
+                const info = getPsalmKey(new Date());
+                if (info.key === "ERROR") {
+                    document.getElementById('psalm-title').innerText = info.label;
+                    return;
+                }
+
+                const resp = await fetch('psalms.json');
+                psalmsData = await resp.json();
                 
-                let body = "";
+                let content = "";
                 let title = "מזמור " + numToHeb(info.key.split('_')[0]);
 
                 if (info.key === "94") {
-                    const pA = Object.values(globalPsalmsData["94_A"] || {}).join(' ');
-                    const pB = Object.values(globalPsalmsData["94_B"] || {}).join(' ');
-                    body = pA + "\n\n" + pB;
+                    const a = Object.values(psalmsData["94_A"] || {}).join(' ');
+                    const b = Object.values(psalmsData["94_B"] || {}).join(' ');
+                    content = a + "\n\n" + b;
                 } else {
-                    const data = globalPsalmsData[info.key];
-                    if (data) {
-                        body = (typeof data === 'object' ? Object.values(data).join(' ') : data);
-                        if (info.key === "94_A") title += " (א'-ט\"ו)";
-                        if (info.key === "94_B") title += " (ט\"ז-כ\"ג)";
-                    }
+                    const d = psalmsData[info.key];
+                    content = (typeof d === 'object' ? Object.values(d).join(' ') : d) || "המזמור לא נמצא בבסיס הנתונים";
+                    if (info.key === "94_A") title += " (א'-ט\"ו)";
+                    if (info.key === "94_B") title += " (ט\"ז-כ\"ג)";
                 }
 
                 document.getElementById('psalm-title').innerText = title;
                 document.getElementById('psalm-label').innerText = info.label;
-                document.getElementById('psalm-content').innerText = body.trim();
+                document.getElementById('psalm-content').innerText = content;
+
             } catch (err) {
+                document.getElementById('psalm-title').innerText = "שגיאה בטעינת הקבצים";
                 console.error(err);
-                document.getElementById('psalm-label').innerText = "שגיאה בטעינה. בדוק את הקונסול.";
             }
         }
 
-        window.onload = init;
+        window.onload = load;
     </script>
 </body>
 </html>
