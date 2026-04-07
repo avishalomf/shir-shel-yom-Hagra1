@@ -2,15 +2,33 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>v1.4.6 - שיר של יום</title>
+    <title>v1.4.7 - שיר של יום</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; line-height: 1.6; }
+        #psalm-content { white-space: pre-wrap; font-size: 1.2em; max-width: 800px; margin: 0 auto; text-align: right; }
+        .version-tag { color: #ccc; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <header>
+        <div id="version-tag" class="version-tag">v1.4.7</div>
+        <h2 id="psalm-label">טוען...</h2>
+        <h1 id="psalm-title"></h1>
+    </header>
+    <main>
+        <div id="psalm-content"></div>
+    </main>
+
+    <script src="https://unpkg.com/hebcal@1.6.0/dist/hebcal.min.js"></script>
+
     <script>
-        // VERSION: 1.4.6
-        // לוגיקה מעודכנת לפי טבלת משתמש: סוכות, פסח וחיבור יום רביעי
+        // VERSION: 1.4.7
+        let globalPsalmsData = null;
 
         function numToHeb(num) {
             const letters = {
                 1:'א', 2:'ב', 3:'ג', 4:'ד', 5:'ה', 6:'ו', 7:'ז', 8:'ח', 9:'ט',
-                10:'י', 12:'י"ב', 18:'י"ח', 24:'כ"ד', 29:'כ"ט', 48:'מ"ח', 50:'נ',
+                10:'י', 12:'י"ב', 18:'י"ח', 22:'כ"ב', 24:'כ"ד', 29:'כ"ט', 48:'מ"ח', 50:'נ',
                 66:'ס"ו', 76:'ע"ו', 78:'ע"ח', 80:'פ', 81:'פ"א', 82:'פ"ב', 92:'צ"ב', 
                 93:'צ"ג', 94:'צ"ד', 104:'ק"ד', 105:'ק"ה', 114:'קי"ד', 135:'קל"ה'
             };
@@ -18,20 +36,18 @@
         }
 
         function determinePsalmKey(date) {
-            const hDate = new hebcal.HDate(date);
+            const hDate = new Hebcal.HDate(date);
             const day = hDate.getDate();
             const month = hDate.getMonth();
-            const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+            const dayOfWeek = date.getDay();
 
-            // שבת תמיד ראשונה
             if (dayOfWeek === 6) return { key: "92", label: "שבת קודש" };
 
-            // --- לוגיקה סוכות (תשרי) ---
+            // סוכות
             if (month === 7 && day >= 15 && day <= 21) {
                 if (day === 15) return { key: "76", label: "יום א' דסוכות" };
-                const mIndex = day - 15; 
+                const mIndex = day - 15;
                 const lbl = (day === 21) ? "הושענא רבא" : numToHeb(mIndex) + " דחוה\"מ סוכות";
-                
                 if (mIndex === 1) return { key: "29", label: lbl };
                 if (mIndex === 2) return { key: "50", label: lbl };
                 if (mIndex === 3) return { key: (dayOfWeek === 0) ? "50" : "94_B", label: lbl };
@@ -40,13 +56,12 @@
                 if (mIndex === 6) return { key: "82", label: lbl };
             }
 
-            // --- לוגיקה פסח (ניסן) ---
+            // פסח
             if (month === 1 && day >= 15 && day <= 21) {
                 if (day === 15) return { key: "114", label: "יום א' דפסח" };
                 if (day === 21) return { key: "18", label: "שביעי של פסח" };
-                const mIndex = day - 15; 
+                const mIndex = day - 15;
                 const lbl = numToHeb(mIndex) + " דחוה\"מ פסח";
-
                 if (mIndex === 1) return { key: (dayOfWeek === 0) ? "114" : "78", label: lbl };
                 if (mIndex === 2) return { key: (dayOfWeek === 1) ? "78" : "80", label: lbl };
                 if (mIndex === 3) return { key: (dayOfWeek === 0 || dayOfWeek === 2) ? "80" : "105", label: lbl };
@@ -58,61 +73,45 @@
                 }
             }
 
-            // ראש חודש
             if (day === 1 || day === 30) return { key: "104", label: "ראש חודש" };
-
-            // ימי חול - יום רביעי מחבר את א+ב
             if (dayOfWeek === 3) return { key: "94", label: "" };
             
             const daily = {0:'24', 1:'48', 2:'82', 4:'81', 5:'93'};
-            return { key: daily[dayOfWeek], label: "" };
+            return { key: daily[dayOfWeek] || "24", label: "" };
         }
 
-        let psalmsCache = null;
-
-        async function loadPsalm() {
+        async function init() {
             try {
                 const info = determinePsalmKey(new Date());
-                if (!psalmsCache) {
-                    const response = await fetch('psalms.json');
-                    psalmsCache = await response.json();
-                }
+                const response = await fetch('psalms.json');
+                globalPsalmsData = await response.json();
                 
-                let psalmBody = "";
-                let baseNum = info.key.split('_')[0];
-                let titleText = "מזמור " + numToHeb(baseNum);
+                let body = "";
+                let title = "מזמור " + numToHeb(info.key.split('_')[0]);
 
                 if (info.key === "94") {
-                    const partA = Object.values(psalmsCache["94_A"] || {}).join(' ');
-                    const partB = Object.values(psalmsCache["94_B"] || {}).join(' ');
-                    psalmBody = partA + "\n\n" + partB;
+                    const pA = Object.values(globalPsalmsData["94_A"] || {}).join(' ');
+                    const pB = Object.values(globalPsalmsData["94_B"] || {}).join(' ');
+                    body = pA + "\n\n" + pB;
                 } else {
-                    const data = psalmsCache[info.key];
+                    const data = globalPsalmsData[info.key];
                     if (data) {
-                        psalmBody = (typeof data === 'object' ? Object.values(data).join(' ') : data);
-                        if (info.key === "94_A") titleText += " (א'-ט\"ו)";
-                        if (info.key === "94_B") titleText += " (ט\"ז-כ\"ג)";
+                        body = (typeof data === 'object' ? Object.values(data).join(' ') : data);
+                        if (info.key === "94_A") title += " (א'-ט\"ו)";
+                        if (info.key === "94_B") title += " (ט\"ז-כ\"ג)";
                     }
                 }
 
-                document.getElementById('psalm-title').innerText = titleText;
+                document.getElementById('psalm-title').innerText = title;
                 document.getElementById('psalm-label').innerText = info.label;
-                document.getElementById('psalm-content').innerText = psalmBody.trim();
-                document.getElementById('version-tag').innerText = "v1.4.6";
-            } catch (e) { console.error(e); }
+                document.getElementById('psalm-content').innerText = body.trim();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('psalm-label').innerText = "שגיאה בטעינה. בדוק את הקונסול.";
+            }
         }
 
-        window.onload = loadPsalm;
+        window.onload = init;
     </script>
-</head>
-<body>
-    <header>
-        <span id="version-tag" style="color: #ccc; font-size: 0.8em;"></span>
-        <h2 id="psalm-label"></h2>
-        <h1 id="psalm-title"></h1>
-    </header>
-    <main>
-        <div id="psalm-content" style="white-space: pre-wrap; line-height: 1.6;"></div>
-    </main>
 </body>
 </html>
