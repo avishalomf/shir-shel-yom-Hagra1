@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@hebcal/core@latest/dist/bundle.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --secondary: #e74c3c; --bg: #f4f7f6; --text: #2d3436; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; direction: rtl; color: var(--text); -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; direction: rtl; color: var(--text); }
         #app-root { display: flex; flex-direction: column; align-items: center; min-height: 100vh; width: 100%; }
         .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 600px; width: 92%; margin: 20px auto; text-align: center; }
         .nav-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -19,10 +19,8 @@
         .moed-label { background: var(--secondary); color: white; padding: 6px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; margin: 15px 0; display: inline-block; }
         #psalm-title { color: var(--primary); border-bottom: 3px solid var(--secondary); padding-bottom: 8px; margin: 15px 0; font-size: 1.8rem; }
         #psalm-content { font-size: 1.6rem; line-height: 1.8; text-align: justify; margin-top: 20px; white-space: pre-wrap; padding-top: 20px; border-top: 1px solid #eee; }
-        .footer-info { margin-top: auto; font-size: 0.75rem; color: #b2bec3; padding: 20px; text-align: center; width: 100%; }
+        .footer-info { margin-top: auto; font-size: 0.75rem; color: #b2bec3; padding: 20px; text-align: center; }
     </style>
-
-<meta name="NetsparkQuiltingResult" total-length="7253" removed="0" rules-found="w3390,w6223,w6224,w2655,w3012,w2577,w6863,w73,w21675,r7373s-10p1,w30661,w6563" />
 </head>
 <body>
 <div id="app-root">
@@ -36,7 +34,7 @@
         <h1 id="psalm-title">מזמור...</h1>
         <div id="psalm-content">טוען מזמור...</div>
     </div>
-    <div class="footer-info">גרסה 5.0 | אופליין מלא | מנהג הגר"א</div>
+    <div class="footer-info">גרסה 5.1 | עבודה ללא רשת | מנהג הגר"א</div>
 </div>
 <script>
     if ('serviceWorker' in navigator) {
@@ -48,17 +46,30 @@
     let currentDate = new Date();
     let psalmsCache = null;
 
-    function numToHeb(num) {
-        if (num === "94_A") return 'צ"ד (א)';
-        let n = parseInt(num);
-        if (isNaN(n)) return num;
-        if (n === 15) return 'טו'; if (n === 16) return 'טז';
-        const letters = [{v:400, l:'ת'}, {v:300, l:'ש'}, {v:200, l:'ר'}, {v:100, l:'ק'}, {v:90, l:'צ'}, {v:80, l:'פ'}, {v:70, l:'ע'}, {v:60, l:'ס'}, {v:50, l:'נ'}, {v:40, l:'מ'}, {v:30, l:'ל'}, {v:20, l:'כ'}, {v:10, l:'י'}, {v:9, l:'ט'}, {v:8, l:'ח'}, {v:7, l:'ז'}, {v:6, l:'ו'}, {v:5, l:'ה'}, {v:4, l:'ד'}, {v:3, l:'ג'}, {v:2, l:'ב'}, {v:1, l:'א'}];
-        let str = "";
-        for (let i = 0; i < letters.length; i++) {
-            while (n >= letters[i].v) { str += letters[i].l; n -= letters[i].v; }
+    function numToHeb(n) {
+        if (n === "94_A") return 'צ"ד (א)';
+        let num = parseInt(n);
+        if (isNaN(num)) return n;
+        if (num === 15) return 'טו'; if (num === 16) return 'טז';
+        
+        const units = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+        const tens = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+        const hundreds = ['', 'ק', 'ר', 'ש', 'ת'];
+        
+        let res = "";
+        if (num >= 5000) num -= 5000;
+        
+        let h = Math.floor(num / 100);
+        while (h >= 4) { res += "ת"; h -= 4; num -= 400; }
+        if (h > 0) { res += hundreds[h]; num %= 100; }
+        
+        if (num === 15) res += "טו";
+        else if (num === 16) res += "טז";
+        else {
+            res += tens[Math.floor(num / 10)];
+            res += units[num % 10];
         }
-        return str.length > 1 ? str.slice(0, -1) + '"' + str.slice(-1) : str + "'";
+        return res.length > 1 ? res.slice(0, -1) + '"' + res.slice(-1) : res + "'";
     }
 
     function determinePsalmKey(date) {
@@ -116,14 +127,11 @@
                 let txt = typeof data === 'object' ? Object.values(data).join(' ') : data;
                 document.getElementById('psalm-content').innerText = txt.replace(/&nbsp;/g, ' ').replace(/&thinsp;/g, '').replace(/<\/?[^>]+(>|$)/g, "").trim();
             }
-        } catch (e) { 
-            console.error(e);
-            document.getElementById('psalm-content').innerText = "שגיאה בטעינת הנתונים. וודא שקובץ psalms.json קיים.";
+        } catch (e) {
+            document.getElementById('psalm-content').innerText = "שגיאה בטעינה. וודא שקובץ psalms.json נמצא בשרת.";
         }
     }
-
     function changeDate(d) { currentDate.setDate(currentDate.getDate() - d); loadPsalm(); }
-
     window.onload = () => { 
         let c = setInterval(() => { if (typeof hebcal !== 'undefined') { clearInterval(c); loadPsalm(); } }, 100); 
     };
