@@ -1,20 +1,22 @@
-const CACHE_NAME = 'shir-shel-yom-v5-1';
+const CACHE_NAME = 'shir-shel-yom-v1.4.7';
 const ASSETS = [
-    './',
-    './index.html',
-    './psalms.json',
-    './manifest.json',
-    './favicon.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './psalms.json',
+  './favicon.png',
+  './icon-192.png'
 ];
 
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-    );
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
 });
 
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => response || fetch(event.request))
-    ); 
-}); 
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))));
+});
+
+self.addEventListener('fetch', (e) => {
+  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+});
